@@ -88,10 +88,14 @@ function generateDayCalls(date, startHour, endHour) {
   const rand = mulberry32(seed);
   
   let currentSec = startHour * 3600; // Start of active window (8:00 AM = 28800s)
-  const maxSec = endHour * 3600;     // End of active window (9:00 PM = 75600s)
+  const maxSec = endHour * 3600;     // End of active window (11:00 PM = 82800s)
   
   // Initial random offset (10 to 45 mins)
   currentSec += Math.floor(rand() * 35 + 10) * 60;
+
+  // Decide deterministic number of long calls for this day (1, 2, or 3)
+  const targetLongCalls = Math.floor(rand() * 3) + 1;
+  let longCallsCount = 0;
 
   while (currentSec < maxSec) {
     const callTime = new Date(date);
@@ -106,12 +110,29 @@ function generateDayCalls(date, startHour, endHour) {
     
     if (rType < 0.40) {
       type = 'incoming';
-      duration = Math.floor(rand() * (900 - 60 + 1)) + 60; // 1m to 15m in seconds
     } else if (rType < 0.80) {
       type = 'outgoing';
-      duration = Math.floor(rand() * (900 - 60 + 1)) + 60;
     } else {
       type = 'missed';
+    }
+
+    // Determine duration
+    if (type !== 'missed') {
+      let isLong = false;
+      const isLateHour = (currentSec >= 20 * 3600); // Past 8 PM
+      if (longCallsCount < targetLongCalls && (rand() < 0.20 || (isLateHour && longCallsCount === 0))) {
+        isLong = true;
+        longCallsCount++;
+      }
+
+      if (isLong) {
+        // 20 minutes to 1 hour 30 minutes (1200 to 5400 seconds)
+        duration = Math.floor(rand() * 4200) + 1200;
+      } else {
+        // Normal duration: 1 to 15 minutes (60 to 900 seconds)
+        duration = Math.floor(rand() * 840) + 60;
+      }
+    } else {
       duration = 0;
     }
 
@@ -123,7 +144,7 @@ function generateDayCalls(date, startHour, endHour) {
       timestamp: callTime
     });
 
-    // Random timing intervals between call occurrences
+    // Random timing intervals between call occurrences (gap between end of prev call and start of next)
     const intervalR = rand();
     let intervalSec = 0;
     
@@ -135,7 +156,8 @@ function generateDayCalls(date, startHour, endHour) {
       intervalSec = Math.floor(rand() * 120 + 120) * 60; // 2 hours to 4 hours
     }
 
-    currentSec += intervalSec;
+    // Enforce single-line non-overlapping calls
+    currentSec += duration + intervalSec;
   }
 
   return calls;
@@ -143,7 +165,7 @@ function generateDayCalls(date, startHour, endHour) {
 
 // Generate calls for the currently selected date, hiding active/future calls for Today
 function generateCallsForSelectedDate() {
-  const dayCalls = generateDayCalls(selectedDate, 8, 21);
+  const dayCalls = generateDayCalls(selectedDate, 8, 23);
   const now = new Date();
   
   allCalls = [];
@@ -548,7 +570,7 @@ function getDailyCounts() {
     labels.push(dayLabel);
 
     // Generate calls for day 'd' dynamically to count call types
-    const dayCalls = generateDayCalls(d, 8, 21);
+    const dayCalls = generateDayCalls(d, 8, 23);
     
     if (d.toDateString() === today.toDateString()) {
       const now = new Date();
