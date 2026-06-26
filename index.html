@@ -132,9 +132,8 @@
           
           <div class="date-select-wrapper">
             <i data-lucide="calendar"></i>
-            <select id="date-select" onchange="jumpToDate(this.value)">
-              <!-- Options populated dynamically in app.js -->
-            </select>
+            <span id="date-display-label"></span>
+            <input type="date" id="date-select" onchange="jumpToDate(this.value)">
           </div>
         </div>
         

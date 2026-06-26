@@ -193,36 +193,26 @@ function generateCallsForSelectedDate() {
   futureCalls.sort((a, b) => a.timestamp - b.timestamp);
 }
 
-// Populate the Date select dropdown with days in the current selected month (up to Today)
+// Update the native calendar picker value, bounds, and visual label
 function populateDateDropdown() {
-  const select = document.getElementById('date-select');
-  if (!select) return;
+  const picker = document.getElementById('date-select');
+  const label = document.getElementById('date-display-label');
+  if (!picker) return;
   
-  select.innerHTML = '';
+  const yyyy = selectedDate.getFullYear();
+  const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(selectedDate.getDate()).padStart(2, '0');
+  picker.value = `${yyyy}-${mm}-${dd}`;
   
-  const year = selectedDate.getFullYear();
-  const month = selectedDate.getMonth();
-  
-  const endOfMonth = new Date(year, month + 1, 0);
-  
-  // If it's the current month, limit choices to Today
+  picker.min = "2026-01-01";
   const today = new Date();
-  let limitDate = endOfMonth;
-  if (year === today.getFullYear() && month === today.getMonth()) {
-    limitDate = today;
-  }
+  const tY = today.getFullYear();
+  const tM = String(today.getMonth() + 1).padStart(2, '0');
+  const tD = String(today.getDate()).padStart(2, '0');
+  picker.max = `${tY}-${tM}-${tD}`;
   
-  for (let day = 1; day <= limitDate.getDate(); day++) {
-    const optDate = new Date(year, month, day);
-    const opt = document.createElement('option');
-    opt.value = optDate.toISOString();
-    opt.textContent = optDate.toLocaleDateString('en-US', { day: 'numeric', weekday: 'short' });
-    
-    if (day === selectedDate.getDate()) {
-      opt.selected = true;
-    }
-    
-    select.appendChild(opt);
+  if (label) {
+    label.textContent = selectedDate.toLocaleDateString('en-US', { day: 'numeric', weekday: 'short' });
   }
 }
 
@@ -639,7 +629,13 @@ function triggerToast(call) {
     </div>
     <div class="toast-content">
       <div class="toast-title">${title}</div>
-      <div class="toast-message">${message} • <strong>${numberDisplay}</strong></div>
+      <div class="toast-message">
+        ${message} • 
+        <strong style="display: inline-flex; align-items: center;">
+          <span class="mask-blur" style="margin-right: 2px;">${call.number.first6}</span>
+          <span class="visible-digits">${call.number.last4}</span>
+        </strong>
+      </div>
     </div>
     <button class="toast-close" onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
   `;
