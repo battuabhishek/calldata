@@ -11,11 +11,21 @@ let fullSchedule = [];
 let dayChartInstance = null;
 
 // Generate a random phone number structure (Indian mobile format: +91 XXXXX-X1234)
-function generatePhoneNumber() {
+// Mulberry32 seedable pseudo-random number generator
+function mulberry32(a) {
+  return function() {
+    let t = a += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+function generatePhoneNumber(rand) {
   const prefixes = ['98765', '98123', '88765', '78901', '90123', '80123', '70123', '60123'];
-  const firstPart = prefixes[Math.floor(Math.random() * prefixes.length)];
-  const middleDigit = Math.floor(Math.random() * 10);
-  const last4 = Math.floor(Math.random() * 9000) + 1000;
+  const firstPart = prefixes[Math.floor(rand() * prefixes.length)];
+  const middleDigit = Math.floor(rand() * 10);
+  const last4 = Math.floor(rand() * 9000) + 1000;
   
   return {
     full: `+91 ${firstPart}-${middleDigit}${last4}`,
@@ -53,11 +63,14 @@ function formatDayHeader(dateString) {
 // Generate Call Logs for a single day based on random intervals
 function generateDayCalls(date, startHour, endHour) {
   const calls = [];
+  const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
+  const rand = mulberry32(seed);
+  
   let currentSec = startHour * 3600; // Start of active window (8:00 AM = 28800s)
   const maxSec = endHour * 3600;     // End of active window (9:00 PM = 75600s)
   
   // Initial random offset (10 to 45 mins)
-  currentSec += (Math.floor(Math.random() * 35) + 10) * 60;
+  currentSec += Math.floor(rand() * 35 + 10) * 60;
 
   while (currentSec < maxSec) {
     const callTime = new Date(date);
@@ -66,39 +79,39 @@ function generateDayCalls(date, startHour, endHour) {
     callTime.setSeconds(Math.floor(currentSec % 60));
 
     // Determine Call Type
-    const rType = Math.random();
+    const rType = rand();
     let type = 'incoming';
     let duration = 0;
     
     if (rType < 0.40) {
       type = 'incoming';
-      duration = Math.floor(Math.random() * (900 - 60 + 1)) + 60; // 1m to 15m in seconds
+      duration = Math.floor(rand() * (900 - 60 + 1)) + 60; // 1m to 15m in seconds
     } else if (rType < 0.80) {
       type = 'outgoing';
-      duration = Math.floor(Math.random() * (900 - 60 + 1)) + 60;
+      duration = Math.floor(rand() * (900 - 60 + 1)) + 60;
     } else {
       type = 'missed';
       duration = 0;
     }
 
     calls.push({
-      id: Math.random().toString(36).substr(2, 9),
-      number: generatePhoneNumber(),
+      id: `call_${seed}_${currentSec}`,
+      number: generatePhoneNumber(rand),
       type: type,
       duration: duration,
-      timestamp: callTime.toISOString() // Store ISO strings in JSON schedule
+      timestamp: callTime
     });
 
     // Random timing intervals between call occurrences
-    const intervalR = Math.random();
+    const intervalR = rand();
     let intervalSec = 0;
     
     if (intervalR < 0.45) {
-      intervalSec = (Math.floor(Math.random() * 35) + 10) * 60; // 10 to 45 mins
+      intervalSec = Math.floor(rand() * 35 + 10) * 60; // 10 to 45 mins
     } else if (intervalR < 0.80) {
-      intervalSec = (Math.floor(Math.random() * 75) + 45) * 60; // 45 to 120 mins
+      intervalSec = Math.floor(rand() * 75 + 45) * 60; // 45 to 120 mins
     } else {
-      intervalSec = (Math.floor(Math.random() * 120) + 120) * 60; // 2 hours to 4 hours
+      intervalSec = Math.floor(rand() * 120 + 120) * 60; // 2 hours to 4 hours
     }
 
     currentSec += intervalSec;
@@ -119,42 +132,14 @@ function generatePersistentSchedule(startDate) {
   return schedule;
 }
 
-// Load schedule from LocalStorage or initialize it if first visit
+// Load schedule dynamically on-the-fly using deterministic seeded random generation
 function initCallDatabase() {
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
+  initDate = today;
 
-  // Retrieve start date
-  const savedInitDateStr = localStorage.getItem('call_record_init_date');
-  let savedInitDate = savedInitDateStr ? new Date(savedInitDateStr) : null;
-  
-  const fourDaysInMs = 4 * 24 * 60 * 60 * 1000;
-  
-  // Self-heal/recycle: If there is no init date, OR if the 4-day window has fully expired, reset start to today
-  if (!savedInitDate || (new Date() - savedInitDate) > fourDaysInMs) {
-    savedInitDate = today;
-    localStorage.setItem('call_record_init_date', today.toISOString());
-    localStorage.removeItem('call_record_schedule');
-  }
-  
-  initDate = savedInitDate;
-
-  // Retrieve call schedule
-  const savedScheduleStr = localStorage.getItem('call_record_schedule');
-  if (savedScheduleStr) {
-    fullSchedule = JSON.parse(savedScheduleStr).map(call => {
-      call.timestamp = new Date(call.timestamp);
-      return call;
-    });
-  } else {
-    // Generate schedule starting from initDate
-    const newSchedule = generatePersistentSchedule(initDate);
-    localStorage.setItem('call_record_schedule', JSON.stringify(newSchedule));
-    fullSchedule = newSchedule.map(call => {
-      call.timestamp = new Date(call.timestamp);
-      return call;
-    });
-  }
+  // Generate 4-day schedule dynamically starting from today
+  fullSchedule = generatePersistentSchedule(initDate);
 
   // Filter based on current actual time: visible calls vs future calls
   const now = new Date();
