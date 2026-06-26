@@ -118,6 +118,25 @@
             <button class="tab-btn" onclick="filterCalls('missed')">Missed</button>
           </div>
         </div>
+        <!-- Calendar Navigation Bar -->
+        <div class="calendar-navigation">
+          <div class="month-selector">
+            <button class="nav-arrow-btn" id="prev-month-btn" onclick="changeMonth(-1)" title="Previous Month">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <span id="current-month-display">June 2026</span>
+            <button class="nav-arrow-btn" id="next-month-btn" onclick="changeMonth(1)" title="Next Month">
+              <i data-lucide="chevron-right"></i>
+            </button>
+          </div>
+          
+          <div class="date-select-wrapper">
+            <i data-lucide="calendar"></i>
+            <select id="date-select" onchange="jumpToDate(this.value)">
+              <!-- Options populated dynamically in app.js -->
+            </select>
+          </div>
+        </div>
         
         <!-- Dynamic list content -->
         <div class="feed-content" id="call-logs-container">
@@ -125,6 +144,17 @@
             <i data-lucide="phone-off"></i>
             <p>No call logs available. Synchronizing system...</p>
           </div>
+        </div>
+
+        <!-- Bottom Pagination Controls -->
+        <div class="feed-footer-nav">
+          <button class="day-nav-btn" id="prev-day-btn" onclick="changeDay(-1)">
+            <i data-lucide="arrow-left"></i> Previous Day
+          </button>
+          <span id="current-day-label">Friday, Jun 26</span>
+          <button class="day-nav-btn" id="next-day-btn" onclick="changeDay(1)">
+            Next Day <i data-lucide="arrow-right"></i>
+          </button>
         </div>
       </section>
 
@@ -137,7 +167,7 @@
           <div class="chart-container">
             <canvas id="dayChart"></canvas>
           </div>
-          <div class="chart-subtitle">Total calls per day (4-Day Window)</div>
+          <div class="chart-subtitle">Total calls per day (7-Day Window)</div>
 
 
         </section>

@@ -2,9 +2,13 @@
 let allCalls = [];           // Stores visible calls
 let futureCalls = [];        // Stores future calls to feed the live update observer
 let currentFilter = 'all';   // 'all', 'incoming', 'outgoing', 'missed'
-// Initialization Date and Schedule Persistence
-let initDate = null;
-let fullSchedule = [];
+
+// Date selection states
+let selectedDate = null;
+let initDate = null; // Stays for compatibility
+const minDate = new Date(2026, 0, 1); // January 1, 2026
+let maxDate = null;
+let fullSchedule = []; // Stays for structure compatibility
 
 // Chart Instances
 let dayChartInstance = null;
@@ -137,59 +141,167 @@ function generateDayCalls(date, startHour, endHour) {
   return calls;
 }
 
-// Generate the persistent 4-day call schedule starting from Today
-function generatePersistentSchedule(startDate) {
-  const schedule = [];
-  for (let i = 0; i < 4; i++) {
-    const currentDay = new Date(startDate);
-    currentDay.setDate(startDate.getDate() + i);
-    const dayCalls = generateDayCalls(currentDay, 8, 21);
-    schedule.push(...dayCalls);
-  }
-  return schedule;
-}
-
-// Load schedule dynamically on-the-fly using deterministic seeded random generation aligned to a 4-day cycle
-function initCallDatabase() {
-  const baseReferenceDate = new Date("2026-06-26T00:00:00");
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // Start of today
-
-  // Calculate difference in days and find the start of the current 4-day cycle
-  const diffTime = today - baseReferenceDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  let cycleDayOffset = diffDays % 4;
-  if (cycleDayOffset < 0) {
-    cycleDayOffset += 4;
-  }
-
-  const cycleStartDate = new Date(today);
-  cycleStartDate.setDate(today.getDate() - cycleDayOffset);
-  initDate = cycleStartDate;
-
-  // Generate 4-day schedule dynamically starting from cycle start date
-  fullSchedule = generatePersistentSchedule(initDate);
-
-  // Filter based on current actual time: visible calls vs future calls
-  // A call is only visible after it has completely finished (start time + duration)
+// Generate calls for the currently selected date, hiding active/future calls for Today
+function generateCallsForSelectedDate() {
+  const dayCalls = generateDayCalls(selectedDate, 8, 21);
   const now = new Date();
+  
   allCalls = [];
   futureCalls = [];
-
-  fullSchedule.forEach(call => {
-    const endTime = new Date(call.timestamp.getTime() + call.duration * 1000);
-    if (endTime <= now) {
-      allCalls.push(call);
-    } else {
-      futureCalls.push(call);
-    }
-  });
-
-  // Sort visible descending (newest first)
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  if (selectedDate.toDateString() === today.toDateString()) {
+    // Reveal Today's calls dynamically
+    dayCalls.forEach(call => {
+      const endTime = new Date(call.timestamp.getTime() + call.duration * 1000);
+      if (endTime <= now) {
+        allCalls.push(call);
+      } else {
+        futureCalls.push(call);
+      }
+    });
+  } else {
+    // Past day: all calls are completed
+    allCalls = dayCalls;
+  }
+  
   sortAllCalls();
-
-  // Sort future calls ascending (so next call is index 0)
   futureCalls.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+// Populate the Date select dropdown with days in the current selected month (up to Today)
+function populateDateDropdown() {
+  const select = document.getElementById('date-select');
+  if (!select) return;
+  
+  select.innerHTML = '';
+  
+  const year = selectedDate.getFullYear();
+  const month = selectedDate.getMonth();
+  
+  const endOfMonth = new Date(year, month + 1, 0);
+  
+  // If it's the current month, limit choices to Today
+  const today = new Date();
+  let limitDate = endOfMonth;
+  if (year === today.getFullYear() && month === today.getMonth()) {
+    limitDate = today;
+  }
+  
+  for (let day = 1; day <= limitDate.getDate(); day++) {
+    const optDate = new Date(year, month, day);
+    const opt = document.createElement('option');
+    opt.value = optDate.toISOString();
+    opt.textContent = optDate.toLocaleDateString('en-US', { day: 'numeric', weekday: 'short' });
+    
+    if (day === selectedDate.getDate()) {
+      opt.selected = true;
+    }
+    
+    select.appendChild(opt);
+  }
+}
+
+// Enable/Disable next/prev month and day buttons based on January 2026 - Today boundaries
+function updateNavigationStates() {
+  const prevMonthBtn = document.getElementById('prev-month-btn');
+  const nextMonthBtn = document.getElementById('next-month-btn');
+  const prevDayBtn = document.getElementById('prev-day-btn');
+  const nextDayBtn = document.getElementById('next-day-btn');
+  
+  if (prevMonthBtn) {
+    prevMonthBtn.disabled = (selectedDate.getFullYear() === minDate.getFullYear() && selectedDate.getMonth() === minDate.getMonth());
+  }
+  if (nextMonthBtn) {
+    nextMonthBtn.disabled = (selectedDate.getFullYear() === maxDate.getFullYear() && selectedDate.getMonth() === maxDate.getMonth());
+  }
+  
+  if (prevDayBtn) {
+    const prevDay = new Date(selectedDate);
+    prevDay.setDate(selectedDate.getDate() - 1);
+    prevDayBtn.disabled = (prevDay < minDate);
+  }
+  if (nextDayBtn) {
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(selectedDate.getDate() + 1);
+    nextDayBtn.disabled = (nextDay > maxDate);
+  }
+}
+
+// Reload call feed, charts, and metrics for the active selectedDate
+function loadSelectedDate() {
+  initDate = selectedDate; // Sync initDate for daily counts / charts
+  
+  generateCallsForSelectedDate();
+  populateDateDropdown();
+  
+  const monthLabel = document.getElementById('current-month-display');
+  if (monthLabel) {
+    monthLabel.textContent = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  
+  const dayLabel = document.getElementById('current-day-label');
+  if (dayLabel) {
+    dayLabel.textContent = selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  }
+  
+  updateNavigationStates();
+  renderCallFeed();
+  updateMetrics();
+  updateCharts();
+  
+  // Re-initialize icons
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+
+// Jump to previous/next month
+window.changeMonth = function(dir) {
+  const newDate = new Date(selectedDate);
+  newDate.setMonth(selectedDate.getMonth() + dir);
+  
+  // Clamp boundaries
+  if (newDate > maxDate) {
+    selectedDate = new Date(maxDate);
+  } else if (newDate < minDate) {
+    selectedDate = new Date(minDate);
+  } else {
+    selectedDate = newDate;
+  }
+  
+  loadSelectedDate();
+};
+
+// Jump to previous/next day
+window.changeDay = function(dir) {
+  const newDate = new Date(selectedDate);
+  newDate.setDate(selectedDate.getDate() + dir);
+  
+  if (newDate > maxDate || newDate < minDate) return;
+  
+  selectedDate = newDate;
+  loadSelectedDate();
+};
+
+// Jump to date from select dropdown
+window.jumpToDate = function(isoString) {
+  const newDate = new Date(isoString);
+  if (newDate > maxDate || newDate < minDate) return;
+  selectedDate = newDate;
+  loadSelectedDate();
+};
+
+// Load schedule dynamically on-the-fly starting from Today
+function initCallDatabase() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // Start of today
+  maxDate = today;
+  selectedDate = new Date(maxDate);
+  
+  loadSelectedDate();
 }
 
 function sortAllCalls() {
@@ -406,19 +518,20 @@ function updateCharts() {
   dayChartInstance.update();
 }
 
-// Compute call breakdown by day for the persistent 4-day window
+// Compute call breakdown by day for a rolling 7-day window ending on the selectedDate
 function getDailyCounts() {
   const labels = [];
   const incoming = [];
   const outgoing = [];
   const missed = [];
 
-  for (let i = 0; i < 4; i++) {
-    const d = new Date(initDate);
-    d.setDate(initDate.getDate() + i);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(selectedDate);
+    d.setDate(selectedDate.getDate() - i);
     
     // Relative labels based on current actual system date
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     let dayLabel = '';
     
     if (d.toDateString() === today.toDateString()) {
@@ -434,12 +547,27 @@ function getDailyCounts() {
     }
     labels.push(dayLabel);
 
-    const dStr = d.toDateString();
-    const dayCalls = allCalls.filter(c => c.timestamp.toDateString() === dStr);
-
-    incoming.push(dayCalls.filter(c => c.type === 'incoming').length);
-    outgoing.push(dayCalls.filter(c => c.type === 'outgoing').length);
-    missed.push(dayCalls.filter(c => c.type === 'missed').length);
+    // Generate calls for day 'd' dynamically to count call types
+    const dayCalls = generateDayCalls(d, 8, 21);
+    
+    if (d.toDateString() === today.toDateString()) {
+      const now = new Date();
+      const completedCalls = dayCalls.filter(c => {
+        const endTime = new Date(c.timestamp.getTime() + c.duration * 1000);
+        return endTime <= now;
+      });
+      incoming.push(completedCalls.filter(c => c.type === 'incoming').length);
+      outgoing.push(completedCalls.filter(c => c.type === 'outgoing').length);
+      missed.push(completedCalls.filter(c => c.type === 'missed').length);
+    } else if (d > today) {
+      incoming.push(0);
+      outgoing.push(0);
+      missed.push(0);
+    } else {
+      incoming.push(dayCalls.filter(c => c.type === 'incoming').length);
+      outgoing.push(dayCalls.filter(c => c.type === 'outgoing').length);
+      missed.push(dayCalls.filter(c => c.type === 'missed').length);
+    }
   }
 
   return { labels, incoming, outgoing, missed };
