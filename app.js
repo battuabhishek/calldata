@@ -2,7 +2,6 @@
 let allCalls = [];           // Stores visible calls
 let futureCalls = [];        // Stores future calls to feed the live update observer
 let currentFilter = 'all';   // 'all', 'incoming', 'outgoing', 'missed'
-let maskStyle = 'blur';      // 'blur' or 'x'
 // Initialization Date and Schedule Persistence
 let initDate = null;
 let fullSchedule = [];
@@ -132,13 +131,25 @@ function generatePersistentSchedule(startDate) {
   return schedule;
 }
 
-// Load schedule dynamically on-the-fly using deterministic seeded random generation
+// Load schedule dynamically on-the-fly using deterministic seeded random generation aligned to a 4-day cycle
 function initCallDatabase() {
+  const baseReferenceDate = new Date("2026-06-26T00:00:00");
   const today = new Date();
   today.setHours(0, 0, 0, 0); // Start of today
-  initDate = today;
 
-  // Generate 4-day schedule dynamically starting from today
+  // Calculate difference in days and find the start of the current 4-day cycle
+  const diffTime = today - baseReferenceDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  let cycleDayOffset = diffDays % 4;
+  if (cycleDayOffset < 0) {
+    cycleDayOffset += 4;
+  }
+
+  const cycleStartDate = new Date(today);
+  cycleStartDate.setDate(today.getDate() - cycleDayOffset);
+  initDate = cycleStartDate;
+
+  // Generate 4-day schedule dynamically starting from cycle start date
   fullSchedule = generatePersistentSchedule(initDate);
 
   // Filter based on current actual time: visible calls vs future calls
@@ -269,24 +280,13 @@ function renderCallFeed() {
         iconName = 'phone-missed';
       }
 
-      // Formatting phone number based on masking style
-      let phoneHTML = '';
-      if (maskStyle === 'x') {
-        phoneHTML = `
-          <span class="phone-number-display">
-            <span class="mask-chars">+91 XXXXX-X</span>
-            <span class="visible-digits">${call.number.last4}</span>
-          </span>
-        `;
-      } else {
-        // Blur filter
-        phoneHTML = `
-          <span class="phone-number-display">
-            <span class="mask-blur">${call.number.first6}</span>
-            <span class="visible-digits">${call.number.last4}</span>
-          </span>
-        `;
-      }
+      // Formatting phone number with CSS blur masking
+      const phoneHTML = `
+        <span class="phone-number-display">
+          <span class="mask-blur">${call.number.first6}</span>
+          <span class="visible-digits">${call.number.last4}</span>
+        </span>
+      `;
 
       const timeFormatted = call.timestamp.toLocaleTimeString('en-US', {
         hour: '2-digit',
@@ -439,21 +439,7 @@ window.filterCalls = function(filter) {
   renderCallFeed();
 };
 
-// Toggle masking system between HTML CSS Blur filter and character X masking
-window.setMaskStyle = function(style) {
-  maskStyle = style;
 
-  document.getElementById('mask-blur-btn').classList.remove('active');
-  document.getElementById('mask-x-btn').classList.remove('active');
-  
-  if (style === 'blur') {
-    document.getElementById('mask-blur-btn').classList.add('active');
-  } else {
-    document.getElementById('mask-x-btn').classList.add('active');
-  }
-
-  renderCallFeed();
-};
 
 // Create visual Toast Alert in bottom-right corner for live events
 function triggerToast(call) {
@@ -475,9 +461,7 @@ function triggerToast(call) {
     message = `No answer from caller.`;
   }
 
-  const numberDisplay = maskStyle === 'x' 
-    ? `+91 XXXXX-X${call.number.last4}` 
-    : `${call.number.first6}${call.number.last4}`;
+  const numberDisplay = `${call.number.first6}${call.number.last4}`;
 
   toast.innerHTML = `
     <div class="toast-icon">
