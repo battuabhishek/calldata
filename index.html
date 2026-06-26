@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Call History Analytics Dashboard</title>
+  <!-- Google Fonts: Plus Jakarta Sans for UI, Space Mono for Numbers -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="dashboard-container">
+    
+    <!-- Top Header Panel -->
+    <header class="dashboard-header glass-panel">
+      <div class="header-title-area">
+        <div class="logo-icon">
+          <i data-lucide="phone-call"></i>
+        </div>
+        <div class="title-desc">
+          <h1>Call DATA</h1>
+        </div>
+      </div>
+      
+      <div class="header-controls">
+        <!-- Masking Style Toggle -->
+        <div class="mask-selector">
+          <button id="mask-blur-btn" class="mask-btn active" onclick="setMaskStyle('blur')">CSS Blur</button>
+          <button id="mask-x-btn" class="mask-btn" onclick="setMaskStyle('x')">X-Mark</button>
+        </div>
+        
+        <!-- Live System Clock Display -->
+        <div class="time-display-wrapper">
+          <div class="pulse-dot"></div>
+          <span id="live-clock">18:45:00 PM</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Metrics Cards Grid -->
+    <section class="metrics-grid">
+      <!-- Total Calls -->
+      <div class="metric-card glass-panel total">
+        <div class="metric-header">
+          <span>Total Calls</span>
+          <div class="metric-icon">
+            <i data-lucide="phone"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="stat-total">0</div>
+        <div class="metric-subtext" id="stat-total-trend">Live recording active</div>
+      </div>
+
+      <!-- Incoming Calls -->
+      <div class="metric-card glass-panel incoming">
+        <div class="metric-header">
+          <span>Incoming</span>
+          <div class="metric-icon">
+            <i data-lucide="phone-incoming"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="stat-incoming">0</div>
+        <div class="metric-subtext" id="stat-incoming-pct">0% of total calls</div>
+      </div>
+
+      <!-- Outgoing Calls -->
+      <div class="metric-card glass-panel outgoing">
+        <div class="metric-header">
+          <span>Outgoing</span>
+          <div class="metric-icon">
+            <i data-lucide="phone-outgoing"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="stat-outgoing">0</div>
+        <div class="metric-subtext" id="stat-outgoing-pct">0% of total calls</div>
+      </div>
+
+      <!-- Missed Calls -->
+      <div class="metric-card glass-panel missed">
+        <div class="metric-header">
+          <span>Missed</span>
+          <div class="metric-icon">
+            <i data-lucide="phone-missed"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="stat-missed">0</div>
+        <div class="metric-subtext" id="stat-missed-pct">0% of total calls</div>
+      </div>
+
+      <!-- Avg Duration -->
+      <div class="metric-card glass-panel duration">
+        <div class="metric-header">
+          <span>Avg Duration</span>
+          <div class="metric-icon">
+            <i data-lucide="clock"></i>
+          </div>
+        </div>
+        <div class="metric-value" id="stat-duration">0m 00s</div>
+        <div class="metric-subtext">Answered calls average</div>
+      </div>
+    </section>
+
+    <!-- Main Dashboard Grid Layout -->
+    <main class="dashboard-grid">
+      
+      <!-- Left Column: History Call Logs -->
+      <section class="feed-panel glass-panel">
+        <div class="feed-header">
+          <h2>Call Records Feed</h2>
+          <div class="filter-tabs">
+            <button class="tab-btn active" onclick="filterCalls('all')">All</button>
+            <button class="tab-btn" onclick="filterCalls('incoming')">Incoming</button>
+            <button class="tab-btn" onclick="filterCalls('outgoing')">Outgoing</button>
+            <button class="tab-btn" onclick="filterCalls('missed')">Missed</button>
+          </div>
+        </div>
+        
+        <!-- Dynamic list content -->
+        <div class="feed-content" id="call-logs-container">
+          <div class="feed-empty">
+            <i data-lucide="phone-off"></i>
+            <p>No call logs available. Synchronizing system...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Analytics & Status Panels -->
+      <aside class="right-column">
+        
+        <!-- Analytics Panel -->
+        <section class="right-panel glass-panel">
+          <h3><i data-lucide="bar-chart-2"></i>Daily Volume</h3>
+          <div class="chart-container">
+            <canvas id="dayChart"></canvas>
+          </div>
+          <div class="chart-subtitle">Total calls per day (4-Day Window)</div>
+
+
+        </section>
+
+
+
+      </aside>
+
+    </main>
+
+  </div>
+
+  <!-- Live Toaster Alert Container -->
+  <div id="toast-container"></div>
+
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>
