@@ -788,7 +788,7 @@ input:checked + .slider:before {
   
   .right-column {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 20px;
   }
 }
@@ -810,18 +810,89 @@ input:checked + .slider:before {
   }
   
   .call-row {
-    grid-template-columns: 40px 1fr 80px;
-    gap: 10px;
+    display: grid;
+    grid-template-columns: 36px 1fr auto;
+    grid-template-areas: 
+      "icon number duration"
+      "icon time duration";
+    gap: 4px 12px;
     padding: 12px;
+    align-items: center;
+  }
+
+  .call-type-indicator {
+    grid-area: icon;
+    align-self: center;
+  }
+
+  .call-number-container {
+    grid-area: number;
+  }
+
+  .call-time {
+    grid-area: time;
+    display: block !important;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .call-duration {
+    grid-area: duration;
+    text-align: right;
+    font-size: 0.85rem;
   }
   
-  /* Hide details and actions on mobile for compact layout */
-  .call-row .call-time,
   .call-row .call-actions {
     display: none;
   }
-  
-  .call-row .call-duration {
-    text-align: right;
+}
+
+@media (max-width: 580px) {
+  .dashboard-container {
+    padding: 12px;
+  }
+
+  header.dashboard-header {
+    padding: 16px;
+  }
+
+  .title-desc h1 {
+    font-size: 1.3rem;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .metric-card.duration {
+    grid-column: span 2;
+  }
+
+  .metric-card {
+    padding: 16px;
+  }
+
+  .metric-value {
+    font-size: 1.6rem;
+  }
+
+  .feed-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .filter-tabs {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .tab-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    flex-grow: 1;
+    text-align: center;
   }
 }
