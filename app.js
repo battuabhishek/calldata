@@ -20,16 +20,34 @@ function mulberry32(a) {
   }
 }
 
+function generateRealisticLast4(rand) {
+  while (true) {
+    const num = Math.floor(rand() * 9000) + 1000;
+    const numStr = num.toString();
+    
+    // Prevent numbers ending in 00 or 000
+    if (numStr.endsWith('00')) continue;
+    
+    // Avoid repetitive digits (e.g. 1111, 8888)
+    if (numStr[0] === numStr[1] && numStr[1] === numStr[2] && numStr[2] === numStr[3]) continue;
+    
+    // Avoid simple ascending/descending runs
+    if (num === 1234 || num === 2345 || num === 3456 || num === 4567 || num === 5678 || num === 6789 || num === 9876 || num === 8765 || num === 7654 || num === 6543 || num === 5432 || num === 4321) continue;
+    
+    return numStr;
+  }
+}
+
 function generatePhoneNumber(rand) {
   const prefixes = ['98765', '98123', '88765', '78901', '90123', '80123', '70123', '60123'];
   const firstPart = prefixes[Math.floor(rand() * prefixes.length)];
   const middleDigit = Math.floor(rand() * 10);
-  const last4 = Math.floor(rand() * 9000) + 1000;
+  const last4 = generateRealisticLast4(rand);
   
   return {
     full: `+91 ${firstPart}-${middleDigit}${last4}`,
     first6: `+91 ${firstPart}-${middleDigit}`,
-    last4: last4.toString()
+    last4: last4
   };
 }
 
@@ -153,12 +171,14 @@ function initCallDatabase() {
   fullSchedule = generatePersistentSchedule(initDate);
 
   // Filter based on current actual time: visible calls vs future calls
+  // A call is only visible after it has completely finished (start time + duration)
   const now = new Date();
   allCalls = [];
   futureCalls = [];
 
   fullSchedule.forEach(call => {
-    if (call.timestamp <= now) {
+    const endTime = new Date(call.timestamp.getTime() + call.duration * 1000);
+    if (endTime <= now) {
       allCalls.push(call);
     } else {
       futureCalls.push(call);
@@ -501,13 +521,19 @@ function startSystemClockObserver() {
       clockEl.textContent = timeFormatted;
     }
     
-    // Check if new calls have elapsed and crossed current system time
+    // Check if new calls have finished (meaning their end time has passed)
     let newCallsTriggered = false;
-    while (futureCalls.length > 0 && futureCalls[0].timestamp <= now) {
-      const nextCall = futureCalls.shift();
-      allCalls.push(nextCall);
-      triggerToast(nextCall);
-      newCallsTriggered = true;
+    while (futureCalls.length > 0) {
+      const nextCall = futureCalls[0];
+      const endTime = new Date(nextCall.timestamp.getTime() + nextCall.duration * 1000);
+      if (endTime <= now) {
+        futureCalls.shift();
+        allCalls.push(nextCall);
+        triggerToast(nextCall);
+        newCallsTriggered = true;
+      } else {
+        break;
+      }
     }
 
     if (newCallsTriggered) {
