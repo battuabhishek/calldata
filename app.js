@@ -24,18 +24,42 @@ function mulberry32(a) {
   }
 }
 
+/*
+// PREVIOUS IMPLEMENTATION (Natural distribution with double-digit clusters)
+function generateRealisticLast4(rand) {
+  while (true) {
+    const num = Math.floor(rand() * 9000) + 1000;
+    const numStr = num.toString();
+    if (numStr.endsWith('0')) continue;
+    if (numStr.startsWith('19') || numStr.startsWith('20')) continue;
+    if (numStr.endsWith('01') || numStr.endsWith('02')) continue;
+    if (numStr[0] === numStr[1] && numStr[1] === numStr[2] && numStr[2] === numStr[3]) continue;
+    if (num === 1234 || num === 2345 || num === 3456 || num === 4567 || num === 5678 || num === 6789 || num === 9876 || num === 8765 || num === 7654 || num === 6543 || num === 5432 || num === 4321) continue;
+    return numStr;
+  }
+}
+*/
+
+// SOLUTION 1: Super-Bland Suffix Math (Forces 100% unique digits, no repeats, no adjacent duplicates)
 function generateRealisticLast4(rand) {
   while (true) {
     const num = Math.floor(rand() * 9000) + 1000;
     const numStr = num.toString();
     
-    // Prevent numbers ending in 00 or 000
-    if (numStr.endsWith('00')) continue;
+    // Prevent numbers ending in 0 (eliminates 0, 00, 000 endings)
+    if (numStr.endsWith('0')) continue;
     
-    // Avoid repetitive digits (e.g. 1111, 8888)
-    if (numStr[0] === numStr[1] && numStr[1] === numStr[2] && numStr[2] === numStr[3]) continue;
+    // Avoid year-like prefixes (e.g. 19xx, 20xx)
+    if (numStr.startsWith('19') || numStr.startsWith('20')) continue;
     
-    // Avoid simple ascending/descending runs
+    // Avoid serial-like index patterns at the end (e.g. xxx1, xxx2 after a 0)
+    if (numStr.endsWith('01') || numStr.endsWith('02')) continue;
+    
+    // 1. Force all 4 digits to be completely unique (blocks adjacent repeats, duplicate pairs, and symmetry)
+    const uniqueDigits = new Set(numStr.split(''));
+    if (uniqueDigits.size < 4) continue;
+    
+    // 2. Avoid simple ascending/descending runs
     if (num === 1234 || num === 2345 || num === 3456 || num === 4567 || num === 5678 || num === 6789 || num === 9876 || num === 8765 || num === 7654 || num === 6543 || num === 5432 || num === 4321) continue;
     
     return numStr;
@@ -43,7 +67,13 @@ function generateRealisticLast4(rand) {
 }
 
 function generatePhoneNumber(rand) {
-  const prefixes = ['98765', '98123', '88765', '78901', '90123', '80123', '70123', '60123'];
+  // Real Indian Mobile prefixes (Jio, Airtel, Vi)
+  const prefixes = [
+    '98205', '98197', '98336', '98921', '99204', '98212', '91673', '97694', '99308', '95942',
+    '80975', '82914', '84512', '86526', '88281', '81084', '84228', '84249', '77382', '75061',
+    '72084', '77103', '77159', '77182', '79774', '70451', '70216', '73038', '62015', '63924',
+    '62897', '62908'
+  ];
   const firstPart = prefixes[Math.floor(rand() * prefixes.length)];
   const middleDigit = Math.floor(rand() * 10);
   const last4 = generateRealisticLast4(rand);
