@@ -193,28 +193,126 @@ function generateCallsForSelectedDate() {
   futureCalls.sort((a, b) => a.timestamp - b.timestamp);
 }
 
-// Update the native calendar picker value, bounds, and visual label
+let calViewDate = null;
+
+// Update the visual label and sync calendar state
 function populateDateDropdown() {
-  const picker = document.getElementById('date-select');
   const label = document.getElementById('date-display-label');
-  if (!picker) return;
-  
-  const yyyy = selectedDate.getFullYear();
-  const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-  const dd = String(selectedDate.getDate()).padStart(2, '0');
-  picker.value = `${yyyy}-${mm}-${dd}`;
-  
-  picker.min = "2026-01-01";
-  const today = new Date();
-  const tY = today.getFullYear();
-  const tM = String(today.getMonth() + 1).padStart(2, '0');
-  const tD = String(today.getDate()).padStart(2, '0');
-  picker.max = `${tY}-${tM}-${tD}`;
-  
   if (label) {
     label.textContent = selectedDate.toLocaleDateString('en-US', { day: 'numeric', weekday: 'short' });
   }
+  calViewDate = new Date(selectedDate);
 }
+
+// Toggle custom calendar dropdown visibility
+window.toggleCustomCalendar = function(e) {
+  e.stopPropagation();
+  const calendar = document.getElementById('custom-calendar');
+  if (calendar) {
+    calendar.classList.toggle('open');
+    if (calendar.classList.contains('open')) {
+      calViewDate = new Date(selectedDate);
+      renderCustomCalendarGrid();
+    }
+  }
+};
+
+// Navigate months within custom calendar dropdown
+window.changeCalMonth = function(dir) {
+  const newCalDate = new Date(calViewDate);
+  newCalDate.setMonth(calViewDate.getMonth() + dir);
+  
+  // Clamp boundaries between Jan 1, 2026 and current month
+  const today = new Date();
+  const minCalLimit = new Date(2026, 0, 1);
+  const maxCalLimit = new Date(today.getFullYear(), today.getMonth() + 1, 0); // End of current month
+  
+  if (newCalDate < minCalLimit || newCalDate > maxCalLimit) return;
+  
+  calViewDate = newCalDate;
+  renderCustomCalendarGrid();
+};
+
+// Render the grid of days inside custom calendar
+function renderCustomCalendarGrid() {
+  const grid = document.getElementById('cal-days-grid');
+  const monthYearLabel = document.getElementById('cal-month-year');
+  const prevBtn = document.getElementById('cal-prev-month');
+  const nextBtn = document.getElementById('cal-next-month');
+  if (!grid || !monthYearLabel) return;
+  
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  
+  monthYearLabel.textContent = calViewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  
+  // Disable navigation buttons if boundaries reached
+  if (prevBtn) {
+    prevBtn.disabled = (year === 2026 && month === 0); // Jan 2026 limit
+  }
+  if (nextBtn) {
+    const today = new Date();
+    nextBtn.disabled = (year === today.getFullYear() && month === today.getMonth()); // Current month limit
+  }
+  
+  grid.innerHTML = '';
+  
+  // First day of month index (0 = Sun, 1 = Mon...)
+  const firstDayIndex = new Date(year, month, 1).getDay();
+  // Total days in month
+  const totalDays = new Date(year, month + 1, 0).getDate();
+  
+  // Empty prefix cells
+  for (let i = 0; i < firstDayIndex; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'cal-day-cell empty';
+    grid.appendChild(emptyCell);
+  }
+  
+  // Day cells
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  for (let day = 1; day <= totalDays; day++) {
+    const cellDate = new Date(year, month, day);
+    const cell = document.createElement('div');
+    cell.className = 'cal-day-cell';
+    cell.textContent = day;
+    
+    // Determine active / disabled states
+    if (cellDate.toDateString() === selectedDate.toDateString()) {
+      cell.classList.add('active');
+    }
+    
+    if (cellDate > today || cellDate < minDate) {
+      cell.classList.add('disabled');
+    } else {
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        selectedDate = cellDate;
+        loadSelectedDate();
+        const calendar = document.getElementById('custom-calendar');
+        if (calendar) calendar.classList.remove('open');
+      });
+    }
+    
+    grid.appendChild(cell);
+  }
+  
+  // Re-render Lucide Icons in calendar header if any
+  if (typeof lucide !== 'undefined') {
+    lucide.createIcons();
+  }
+}
+
+// Global click listener to close calendar when clicking outside
+document.addEventListener('click', (e) => {
+  const calendar = document.getElementById('custom-calendar');
+  const wrapper = document.querySelector('.date-select-wrapper');
+  if (calendar && wrapper && !wrapper.contains(e.target)) {
+    calendar.classList.remove('open');
+  }
+});
 
 // Enable/Disable next/prev month and day buttons based on January 2026 - Today boundaries
 function updateNavigationStates() {

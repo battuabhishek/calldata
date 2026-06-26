@@ -130,10 +130,28 @@
             </button>
           </div>
           
-          <div class="date-select-wrapper">
+          <div class="date-select-wrapper" onclick="toggleCustomCalendar(event)">
             <i data-lucide="calendar"></i>
             <span id="date-display-label"></span>
-            <input type="date" id="date-select" onchange="jumpToDate(this.value)">
+            
+            <!-- Custom Calendar Dropdown -->
+            <div class="custom-calendar-dropdown" id="custom-calendar" onclick="event.stopPropagation()">
+              <div class="cal-header">
+                <button class="cal-nav-btn" id="cal-prev-month" onclick="changeCalMonth(-1); event.stopPropagation();" title="Previous Month">
+                  <i data-lucide="chevron-left"></i>
+                </button>
+                <span id="cal-month-year">June 2026</span>
+                <button class="cal-nav-btn" id="cal-next-month" onclick="changeCalMonth(1); event.stopPropagation();" title="Next Month">
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </div>
+              <div class="cal-weekdays">
+                <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+              </div>
+              <div class="cal-days" id="cal-days-grid">
+                <!-- Rendered dynamically in app.js -->
+              </div>
+            </div>
           </div>
         </div>
         
